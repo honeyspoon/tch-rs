@@ -69,6 +69,22 @@ impl ModelPackage {
             return Err(TchError::Torch("No input tensors provided".into()));
         }
 
+        if inputs.len() > 16 {
+            return Err(TchError::Torch("Too many input tensors (max 16)".into()));
+        }
+
+        // Validate input tensors
+        for (i, tensor) in inputs.iter().enumerate() {
+            if tensor.numel() == 0 {
+                return Err(TchError::Torch(format!("Input tensor {} is empty", i)));
+            }
+        }
+
+        // Ensure CUDA is properly initialized before inference
+        if crate::Cuda::is_available() {
+            let _ = crate::Cuda::device_count(); // Initialize CUDA context
+        }
+
         // Convert input tensors to raw pointers
         let input_ptrs: Vec<*mut torch_sys::C_tensor> =
             inputs.iter().map(|t| t.as_ptr() as *mut torch_sys::C_tensor).collect();

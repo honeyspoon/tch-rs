@@ -190,18 +190,18 @@ int at_autocast_increment_nesting() {
 
 bool at_autocast_is_enabled() {
   PROTECT(
-    return at::autocast::is_enabled();
+    return at::autocast::is_autocast_enabled(at::kCUDA);
   )
-  return -1;
+  return false;
 }
 
 bool at_autocast_set_enabled(bool b) {
   PROTECT(
-    bool is_enabled = at::autocast::is_enabled();
-    at::autocast::set_enabled(b);
+    bool is_enabled = at::autocast::is_autocast_enabled(at::kCUDA);
+    at::autocast::set_autocast_enabled(at::kCUDA, b);
     return is_enabled;
   )
-  return -1;
+  return false;
 }
 
 int at_device(tensor t) {
@@ -1265,13 +1265,29 @@ void aoti_free(aoti_model_package_loader loader) {
 
 tensor* aoti_run(aoti_model_package_loader loader, tensor* inputs, int n_inputs, int* n_outputs) {
   PROTECT(
+    if (!loader) {
+      throw std::runtime_error("AOTI loader is null");
+    }
+    
     std::vector<at::Tensor> inputs_vec;
     for (int i = 0; i < n_inputs; i++) {
+      if (!inputs[i]) {
+        throw std::runtime_error("Input tensor is null at index " + std::to_string(i));
+      }
       inputs_vec.push_back(*inputs[i]);
+    }
+    
+    // Ensure CUDA context is ready
+    if (torch::cuda::is_available()) {
+      torch::cuda::synchronize();
     }
     
     std::vector<at::Tensor> results = loader->run(inputs_vec);
     *n_outputs = results.size();
+    
+    if (results.empty()) {
+      throw std::runtime_error("AOTI model returned no outputs");
+    }
     
     tensor* output_tensors = (tensor*)malloc(results.size() * sizeof(tensor));
     for (size_t i = 0; i < results.size(); i++) {
