@@ -4,6 +4,7 @@
 
 #ifdef __cplusplus
 #include<torch/torch.h>
+#include<torch/csrc/inductor/aoti_package/model_package_loader.h>
 #include<stdexcept>
 using namespace std;
 extern thread_local char *torch_last_err;
@@ -14,6 +15,7 @@ typedef torch::Scalar *scalar;
 typedef torch::optim::Optimizer *optimizer;
 typedef torch::jit::script::Module *module;
 typedef torch::jit::IValue *ivalue;
+typedef torch::inductor::AOTIModelPackageLoader *aoti_model_package_loader;
 #define PROTECT(x) \
   try { \
     x \
@@ -26,6 +28,7 @@ typedef void *optimizer;
 typedef void *scalar;
 typedef void *module;
 typedef void *ivalue;
+typedef void *aoti_model_package_loader;
 #endif
 
 char *get_and_reset_last_err(); // thread-local
@@ -264,6 +267,10 @@ void ati_to_tensor_list(ivalue, tensor *, int);
 
 void atm_set_tensor_expr_fuser_enabled(int);
 bool atm_get_tensor_expr_fuser_enabled();
+
+aoti_model_package_loader aoti_load(char* path);
+void aoti_free(aoti_model_package_loader loader);
+tensor* aoti_run(aoti_model_package_loader loader, tensor* inputs, int n_inputs, int* n_outputs);
 
 int ati_tag(ivalue);
 

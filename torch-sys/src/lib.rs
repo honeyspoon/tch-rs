@@ -167,6 +167,22 @@ extern "C" {
 }
 
 #[repr(C)]
+pub struct C_aoti_model_package_loader {
+    _private: [u8; 0],
+}
+
+extern "C" {
+    pub fn aoti_load(path: *const c_char) -> *mut C_aoti_model_package_loader;
+    pub fn aoti_free(loader: *mut C_aoti_model_package_loader);
+    pub fn aoti_run(
+        loader: *mut C_aoti_model_package_loader,
+        inputs: *mut *mut C_tensor,
+        n_inputs: c_int,
+        n_outputs: *mut c_int,
+    ) -> *mut *mut C_tensor;
+}
+
+#[repr(C)]
 pub struct C_optimizer {
     _private: [u8; 0],
 }

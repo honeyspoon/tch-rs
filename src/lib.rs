@@ -30,3 +30,6 @@ pub use tensor::{
 
 pub mod nn;
 pub mod vision;
+
+#[cfg(feature = "aoti")]
+pub mod aoti;

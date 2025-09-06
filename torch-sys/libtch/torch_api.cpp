@@ -1250,6 +1250,39 @@ bool atm_get_tensor_expr_fuser_enabled() {
   return false;
 }
 
+aoti_model_package_loader aoti_load(char* path) {
+  PROTECT(
+    return new torch::inductor::AOTIModelPackageLoader(std::string(path));
+  )
+  return nullptr;
+}
+
+void aoti_free(aoti_model_package_loader loader) {
+  PROTECT(
+    delete loader;
+  )
+}
+
+tensor* aoti_run(aoti_model_package_loader loader, tensor* inputs, int n_inputs, int* n_outputs) {
+  PROTECT(
+    std::vector<at::Tensor> inputs_vec;
+    for (int i = 0; i < n_inputs; i++) {
+      inputs_vec.push_back(*inputs[i]);
+    }
+    
+    std::vector<at::Tensor> results = loader->run(inputs_vec);
+    *n_outputs = results.size();
+    
+    tensor* output_tensors = (tensor*)malloc(results.size() * sizeof(tensor));
+    for (size_t i = 0; i < results.size(); i++) {
+      output_tensors[i] = new torch::Tensor(results[i]);
+    }
+    
+    return output_tensors;
+  )
+  return nullptr;
+}
+
 void atm_set_profiling_mode(int b) {
   PROTECT(
     torch::jit::getProfilingMode() = (bool)b;
