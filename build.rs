@@ -8,6 +8,11 @@ fn main() {
             println!("cargo:rustc-link-arg=-Wl,--no-as-needed");
             println!("cargo:rustc-link-arg=-Wl,--copy-dt-needed-entries");
             println!("cargo:rustc-link-arg=-ltorch");
+            
+            // AOTI-specific: allow undefined NCCL symbols for single-GPU inference
+            if std::env::var("CARGO_FEATURE_AOTI").is_ok() {
+                println!("cargo:rustc-link-arg=-Wl,--allow-shlib-undefined");
+            }
         }
         _ => {}
     }
