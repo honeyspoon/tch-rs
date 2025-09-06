@@ -49,14 +49,26 @@ fn main() -> Result<()> {
     let model = ModelPackage::load(model_path)?;
     println!("Model loaded successfully!");
 
-    // Create some example input tensors
-    // Note: Adjust dimensions based on your specific model requirements
-    let input = Tensor::randn([1, 10], (Kind::Float, Device::Cpu));
-    println!("Input tensor shape: {:?}", input.size());
+    // Create example inputs for embedding model (input_ids + attention_mask)
+    // Note: Using smaller sequence length for better compatibility
+    let sequence_length = 32; // Smaller for GPU memory safety
+    let batch_size = 1;
+    let vocab_size = 100; // Smaller vocab for safety
 
-    // Run inference
-    println!("Running inference...");
-    let outputs = model.run(&[input])?;
+    println!("Creating inputs: batch_size={}, sequence_length={}", batch_size, sequence_length);
+
+    // Input IDs (token indices) - using smaller vocab for safety
+    let input_ids =
+        Tensor::randint(vocab_size, [batch_size, sequence_length], (Kind::Int64, Device::Cpu));
+    println!("Input IDs shape: {:?}", input_ids.size());
+
+    // Attention mask (1 for real tokens, 0 for padding) - all ones for simplicity
+    let attention_mask = Tensor::ones([batch_size, sequence_length], (Kind::Int64, Device::Cpu));
+    println!("Attention mask shape: {:?}", attention_mask.size());
+
+    // Run inference with both inputs (stella model expects 2 inputs)
+    println!("Running inference with 2 inputs...");
+    let outputs = model.run(&[input_ids, attention_mask])?;
 
     println!("Inference completed!");
     println!("Number of outputs: {}", outputs.len());
