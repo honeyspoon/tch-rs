@@ -6,6 +6,8 @@ pub use utils::{
     set_num_threads, QEngine,
 };
 
+#[cfg(feature = "aoti")]
+pub mod aoti;
 pub(crate) mod device;
 pub(crate) mod image;
 pub mod jit;

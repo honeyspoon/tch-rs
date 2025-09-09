@@ -1277,12 +1277,6 @@ tensor* aoti_run(aoti_model_package_loader loader, tensor* inputs, int n_inputs,
       inputs_vec.push_back(*inputs[i]);
     }
     
-    // Ensure CUDA context is ready
-    if (torch::cuda::is_available()) {
-      torch::cuda::synchronize();
-    }
-    
-    std::vector<at::Tensor> results = loader->run(inputs_vec);
     *n_outputs = results.size();
     
     if (results.empty()) {

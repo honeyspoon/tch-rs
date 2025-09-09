@@ -34,22 +34,12 @@ impl ModelPackage {
     ///
     /// A `ModelPackage` that can be used for inference, or a `TchError` if loading fails.
     pub fn load<P: AsRef<str>>(path: P) -> Result<Self, TchError> {
+        // Keep it simple like pierric - let AOTInductor handle CUDA initialization
         let path = CString::new(path.as_ref())?;
-        let loader = unsafe { torch_sys::aoti_load(path.as_ptr()) };
+        let loader = unsafe_torch_err!(torch_sys::aoti_load(path.as_ptr()));
 
         if loader.is_null() {
-            let c_error = unsafe { torch_sys::get_and_reset_last_err() };
-            let error = if c_error.is_null() {
-                "Failed to load AOT model".to_string()
-            } else {
-                unsafe {
-                    let error_str =
-                        std::ffi::CStr::from_ptr(c_error).to_string_lossy().into_owned();
-                    libc::free(c_error as *mut libc::c_void);
-                    error_str
-                }
-            };
-            return Err(TchError::Torch(error));
+            return Err(TchError::Torch("Failed to load AOT model".into()));
         }
 
         Ok(ModelPackage { loader })
@@ -80,10 +70,7 @@ impl ModelPackage {
             }
         }
 
-        // Ensure CUDA is properly initialized before inference
-        if crate::Cuda::is_available() {
-            let _ = crate::Cuda::device_count(); // Initialize CUDA context
-        }
+        // CUDA context should already be initialized during model loading
 
         // Convert input tensors to raw pointers
         let input_ptrs: Vec<*mut torch_sys::C_tensor> =
@@ -91,28 +78,15 @@ impl ModelPackage {
 
         let mut n_outputs: libc::c_int = 0;
 
-        let output_ptrs = unsafe {
-            torch_sys::aoti_run(
-                self.loader,
-                input_ptrs.as_ptr() as *mut *mut torch_sys::C_tensor,
-                inputs.len() as libc::c_int,
-                &mut n_outputs,
-            )
-        };
+        let output_ptrs = unsafe_torch_err!(torch_sys::aoti_run(
+            self.loader,
+            input_ptrs.as_ptr() as *mut *mut torch_sys::C_tensor,
+            inputs.len() as libc::c_int,
+            &mut n_outputs,
+        ));
 
         if output_ptrs.is_null() {
-            let c_error = unsafe { torch_sys::get_and_reset_last_err() };
-            let error = if c_error.is_null() {
-                "Failed to run AOT model inference".to_string()
-            } else {
-                unsafe {
-                    let error_str =
-                        std::ffi::CStr::from_ptr(c_error).to_string_lossy().into_owned();
-                    libc::free(c_error as *mut libc::c_void);
-                    error_str
-                }
-            };
-            return Err(TchError::Torch(error));
+            return Err(TchError::Torch("Failed to run AOT model inference".into()));
         }
 
         // Convert output tensor pointers to Tensor objects
@@ -121,7 +95,8 @@ impl ModelPackage {
             for i in 0..n_outputs as isize {
                 let tensor_ptr = *output_ptrs.offset(i);
                 if !tensor_ptr.is_null() {
-                    outputs.push(crate::wrappers::tensor::Tensor::from_ptr(tensor_ptr));
+                    // Use clone_from_ptr like pierric for safer memory management
+                    outputs.push(crate::wrappers::tensor::Tensor::clone_from_ptr(tensor_ptr));
                 }
             }
             // Free the array of pointers (but not the individual tensors)
