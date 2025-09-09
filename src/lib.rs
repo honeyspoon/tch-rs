@@ -32,4 +32,5 @@ pub mod nn;
 pub mod vision;
 
 #[cfg(feature = "aoti")]
-pub mod aoti;
+pub use wrappers::aoti;
+
